@@ -86,6 +86,10 @@ if __name__ == "__main__":
     model_params["label_col"] = 256
     model_params["label_cha"] = 1
 
+    model_params["mask_row"] = 256
+    model_params["mask_col"] = 256
+    model_params["mask_cha"] = 1
+
     model_params["batch_size"] = 2
 
     model_params["data_arg.rflip_leftright"] = True

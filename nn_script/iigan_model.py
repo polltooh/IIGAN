@@ -48,6 +48,7 @@ class Model(ModelAbs):
 
         gf_dim = 64 # the number of channel of the first layer
         with tf.variable_scope("G"):
+            # encode network
             e1 = self.conv2_wapper(image, gf_dim, wd, "e1", True, leaky_param)
             print(e1)
             e2 = self.conv2_wapper(e1, gf_dim * 2, wd, "e2", True, leaky_param)
@@ -60,19 +61,16 @@ class Model(ModelAbs):
             print(e5)
             e6 = self.conv2_wapper(e5, gf_dim * 8, wd, "e6", True, leaky_param)
             print(e6)
-
+            
+            # decode network
             d1 = self.deconv2_wapper(e6, e5, wd, "d1", True, leaky_param, True)
             print(d1)
-            
             d2 = self.deconv2_wapper(d1, e4, wd, "d2", True, leaky_param, True)
             print(d2)
-
             d3 = self.deconv2_wapper(d2, e3, wd, "d3", True, leaky_param, True)
             print(d3)
-
             d4 = self.deconv2_wapper(d3, e2, wd, "d4", True, leaky_param, True)
             print(d4)
-
             d5 = self.deconv2_wapper(d4, e1, wd, "d5", True, leaky_param, True)
             print(d5)
 
@@ -82,7 +80,6 @@ class Model(ModelAbs):
                             False, leaky_param, False)
 
             g_image = tf.tanh(d6, d6.op.name + "_tanh")
-            self.g_image = g_image
             print(g_image)
 
         return g_image 
@@ -106,10 +103,9 @@ class Model(ModelAbs):
             print(c5)
             c6 = self.conv2_wapper(c5, df_dim * 8, wd, "c6", True, leaky_param)
             print(c6)
-
             fc = mf.fully_connected_layer(c6, 1, wd, "fc")
-            self.fc = fc
             print(fc)
+        return fc
 
     def model_infer(self, data_ph, model_params):
 
@@ -117,38 +113,54 @@ class Model(ModelAbs):
         wd = model_params["weight_decay"]
 
         g_image = self.generator(data_ph, wd, leaky_param)
+        self.g_image = g_image
         fc = self.discriminator(g_image, data_ph, wd, leaky_param)
-        exit(1)
+        self.fc = fc
 
     def model_loss(self, data_ph, model_params):
         wd_loss = tf.add_n(tf.get_collection("losses"), name = 'wd_loss')
-        real_label = tf.constant(1, dtype = tf.float32, shape = (self.batch_size, 1))
-        fake_label = tf.constant(0, dtype = tf.float32, shape = (self.batch_size, 1))
+        batch_size = data_ph.get_input().get_shape().as_list()[0]
+
+        real_label = tf.constant(1, dtype = tf.float32, shape = (batch_size, 1))
+        fake_label = tf.constant(0, dtype = tf.float32, shape = (batch_size, 1))
         fake_real_label = tf.concat(0, [fake_label, real_label])
-        self.d_loss = tf.ad(tf.reduce_mean(
+
+        self.d_loss = tf.reduce_mean(
                      tf.nn.sigmoid_cross_entropy_with_logits(self.fc, 
-                     fake_real_label), name = "d_xentropy_loss"), wd_loss,
-                     name = 'd_loss')
+                     fake_real_label), name = "d_xentropy_loss")
         tf.add_to_collection("losses", self.d_loss)
+
+        self.d_w_loss = tf.add(self.d_loss, wd_loss,
+                     name = 'd_loss')
+        tf.add_to_collection("losses", self.d_w_loss)
 
         real_fake_label = tf.concat(0, [real_label, fake_label])
         g_total_loss = tf.nn.sigmoid_cross_entropy_with_logits(self.fc, 
                                                     real_fake_label)
-        self.g_loss = tf.add(tf.reduce_mean(g_total_loss[:self.batch_size,:], 
-                        name = "g_xentropy_loss"), wd_loss,
+
+        self.g_loss = tf.reduce_mean(g_total_loss[:batch_size,:], 
+                        name = "g_xentropy_loss")
+        tf.add_to_collection("losses", self.g_loss)
+
+        self.g_w_loss = tf.add(self.g_loss, wd_loss,
                         name = "g_loss")
+        tf.add_to_collection("losses", self.g_w_loss)
 
     def model_mini(self, model_params):
         d_vars = [v for v in tf.trainable_variables() if "D" in v.op.name]
         g_vars = [v for v in tf.trainable_variables() if "G" in v.op.name]
 
         self.d_optim = tf.train.AdamOptimizer(
-                            self.init_learning_rate).minimize(
-                            self.d_loss, var_list = d_vars)
+                            model_params["init_learning_rate"]).minimize(
+                            self.d_w_loss, var_list = d_vars)
 
         self.g_optim = tf.train.AdamOptimizer(
-                            self.init_learning_rate).minimize(
-                            self.g_loss, var_list = g_vars)
-
+                            model_params["init_learning_rate"]).minimize(
+                            self.g_w_loss, var_list = g_vars)
+    
+    def get_train_op(self):
+        return self.d_optim, self.g_optim
+        
     def get_loss(self):
-        pass
+        return self.d_loss, self.g_loss
+

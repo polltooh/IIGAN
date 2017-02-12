@@ -35,6 +35,7 @@ weight_decay:0.00004
 train_file_name:../file_list/train_list1.txt
 test_file_name:../file_list/test_list1.txt
 test_per_iter: 1
+save_per_iter: 2
 
 data_arg.feature.rflip_leftright: True
 data_arg.feature.rcrop_size: [224, 224]

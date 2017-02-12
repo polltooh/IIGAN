@@ -20,11 +20,15 @@ class DataPh(DataPhAbs):
                                        name="label"
                                        )
 
+        self.keep_prob_ph = tf.placeholder(tf.float32, 
+                            name = "keep_prob")
+
     def get_label(self):
         return self.label_ph
 
     def get_input(self):
         return self.input_ph
 
-    def get_mask(self):
-        return self.mask_ph
+    def get_keep_prob(self):
+        return self.keep_prob_ph
+    

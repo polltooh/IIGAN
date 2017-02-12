@@ -22,6 +22,7 @@ class NetFlow(object):
         self.model = Model(self.data_ph, model_params)
         self.d_loss, self.g_loss = self.model.get_loss()
         self.d_train_op, self.g_train_op = self.model.get_train_op()
+        self.d_clip = self.model.get_clip()
 
     def get_feed_dict(self, sess, is_train):
         feed_dict = dict()
@@ -35,9 +36,13 @@ class NetFlow(object):
                                     self.test_data_input.get_input(), 
                                     self.test_data_input.get_label(),
                                     self.test_data_input.get_file_line()])
+        #normalize to [-1, 1]
 
+        input_v = (input_v - 0.5) * 2
+        label_v = (label_v * 100 - 0.5) * 2
         feed_dict[self.data_ph.get_input()] = input_v
         feed_dict[self.data_ph.get_label()] = label_v
+        feed_dict[self.data_ph.get_keep_prob()] = 0.5
 
         return feed_dict
 
@@ -81,8 +86,8 @@ class NetFlow(object):
                 feed_dict = self.get_feed_dict(sess, is_train = True)
                 #self.check_feed_dict(feed_dict)
                 for di in range(self.model_params["d_iter"]):
-                    _, d_loss_v = sess.run([self.d_train_op, 
-                                self.d_loss], feed_dict)
+                    _, d_loss_v, _ = sess.run([self.d_train_op, 
+                                self.d_loss, self.d_clip], feed_dict)
                 
                 for gi in range(self.model_params["g_iter"]):
                     _, g_loss_v = sess.run([self.g_train_op,
@@ -92,10 +97,9 @@ class NetFlow(object):
                     feed_dict = self.get_feed_dict(sess, is_train = False)
                     test_d_loss_v, test_g_loss_v = sess.run([self.d_loss, 
                                       self.g_loss], feed_dict)
-                    print(("i: %d train d_loss: %.4f g_loss: %.4f " + 
-                            "test d_loss: %.4f g_loss: %.4f")%(i, \
+                    print(("i: %d train d_loss: %.8f g_loss: %.8f " + 
+                            "test d_loss: %.8f g_loss: %.8f")%(i, \
                         d_loss_v, g_loss_v, test_d_loss_v, test_g_loss_v))
-                exit(1)
         else:
             pass
             #for i in range(self.model_params["test_iter"]):

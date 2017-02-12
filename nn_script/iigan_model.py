@@ -40,10 +40,16 @@ class Model(ModelAbs):
                         deconv.op.name + "_concat")
 
         return deconv
+
+    def keep_prob_wapper(self, input_tensor, keep_prob):
+        input_tensor = tf.nn.dropout(input_tensor, 
+                        keep_prob, name = input_tensor.op.name + "_dropout")
+        return input_tensor
         
         
     def generator(self, data_ph, wd, leaky_param):
         image = data_ph.get_input()
+        keep_prob = data_ph.get_keep_prob()
         output_c_dim = data_ph.get_label().get_shape().as_list()[3]
 
         gf_dim = 64 # the number of channel of the first layer
@@ -64,10 +70,13 @@ class Model(ModelAbs):
             
             # decode network
             d1 = self.deconv2_wapper(e6, e5, wd, "d1", True, leaky_param, True)
+            d1 = self.keep_prob_wapper(d1, keep_prob)
             print(d1)
             d2 = self.deconv2_wapper(d1, e4, wd, "d2", True, leaky_param, True)
+            d2 = self.keep_prob_wapper(d2, keep_prob)
             print(d2)
             d3 = self.deconv2_wapper(d2, e3, wd, "d3", True, leaky_param, True)
+            d3 = self.keep_prob_wapper(d3, keep_prob)
             print(d3)
             d4 = self.deconv2_wapper(d3, e2, wd, "d4", True, leaky_param, True)
             print(d4)
@@ -113,11 +122,15 @@ class Model(ModelAbs):
         wd = model_params["weight_decay"]
 
         g_image = self.generator(data_ph, wd, leaky_param)
+        tf.add_to_collection("image_to_write", g_image)
+        tf.add_to_collection("image_to_write", data_ph.get_input())
+        tf.add_to_collection("image_to_write", data_ph.get_label())
+        
         self.g_image = g_image
         fc = self.discriminator(g_image, data_ph, wd, leaky_param)
         self.fc = fc
 
-    def model_loss(self, data_ph, model_params):
+    def model_loss_org(self, data_ph, model_params):
         wd_loss = tf.add_n(tf.get_collection("losses"), name = 'wd_loss')
         batch_size = data_ph.get_input().get_shape().as_list()[0]
 
@@ -145,22 +158,69 @@ class Model(ModelAbs):
         self.g_w_loss = tf.add(self.g_loss, wd_loss,
                         name = "g_loss")
         tf.add_to_collection("losses", self.g_w_loss)
+    
+    def loss_wapper(self, infer, label):
+        # cross entropy without log and without sigmoid function
+        return (1 - 2 * label) * infer
+
+    def model_loss(self, data_ph, model_params):
+        # refer to Wasserstein GAN training percedure
+        wd_loss = tf.add_n(tf.get_collection("losses"), name = 'wd_loss')
+        batch_size = data_ph.get_input().get_shape().as_list()[0]
+
+        real_label = tf.constant(1, dtype = tf.float32, shape = (batch_size, 1))
+        fake_label = tf.constant(0, dtype = tf.float32, shape = (batch_size, 1))
+        fake_real_label = tf.concat(0, [fake_label, real_label])
+
+        self.d_loss = tf.reduce_mean(self.loss_wapper(self.fc, fake_real_label),
+                    name = "d_fc_loss")
+
+        tf.add_to_collection("losses", self.d_loss)
+
+        self.d_w_loss = tf.add(self.d_loss, wd_loss,
+                     name = 'd_loss')
+        tf.add_to_collection("losses", self.d_w_loss)
+
+
+        real_fake_label = tf.concat(0, [real_label, fake_label])
+
+        g_total_loss = self.loss_wapper(self.fc, real_fake_label)
+
+        self.g_loss = tf.reduce_mean(g_total_loss[:batch_size,:], 
+                        name = "g_fc_loss")
+
+        tf.add_to_collection("losses", self.g_loss)
+
+        self.g_w_loss = tf.add(self.g_loss, wd_loss,
+                        name = "g_loss")
+
+        tf.add_to_collection("losses", self.g_w_loss)
 
     def model_mini(self, model_params):
         d_vars = [v for v in tf.trainable_variables() if "D" in v.op.name]
         g_vars = [v for v in tf.trainable_variables() if "G" in v.op.name]
 
-        self.d_optim = tf.train.AdamOptimizer(
+        self.d_optim = tf.train.RMSPropOptimizer(
                             model_params["init_learning_rate"]).minimize(
                             self.d_w_loss, var_list = d_vars)
+        #self.d_optim = tf.train.AdamOptimizer(
+        #                    model_params["init_learning_rate"]).minimize(
+        #                    self.d_w_loss, var_list = d_vars)
 
-        self.g_optim = tf.train.AdamOptimizer(
+        self.g_optim = tf.train.RMSPropOptimizer(
                             model_params["init_learning_rate"]).minimize(
                             self.g_w_loss, var_list = g_vars)
     
+        self.clip_d = [d.assign(tf.clip_by_value(d, -0.01, 0.01)) for d in d_vars]
+
     def get_train_op(self):
         return self.d_optim, self.g_optim
         
     def get_loss(self):
         return self.d_loss, self.g_loss
+
+    def get_clip(self):
+        return self.clip_d
+
+        
 

@@ -23,6 +23,9 @@ class DataPh(DataPhAbs):
         self.keep_prob_ph = tf.placeholder(tf.float32, 
                             name = "keep_prob")
 
+        self.train_test_ph = tf.placeholder(tf.bool,
+                            name = "train_test")
+
     def get_label(self):
         return self.label_ph
 
@@ -31,4 +34,6 @@ class DataPh(DataPhAbs):
 
     def get_keep_prob(self):
         return self.keep_prob_ph
-    
+   
+    def get_train_test(self):
+        return self.train_test_ph

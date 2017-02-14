@@ -31,11 +31,14 @@ class NetFlow(object):
                                     self.train_data_input.get_input(), 
                                     self.train_data_input.get_label(),
                                     self.train_data_input.get_file_line()])
+
+            feed_dict[self.data_ph.get_train_test()] = True
         else:
             input_v, label_v, file_line_v = sess.run([
                                     self.test_data_input.get_input(), 
                                     self.test_data_input.get_label(),
                                     self.test_data_input.get_file_line()])
+            feed_dict[self.data_ph.get_train_test()] = False
         #normalize to [-1, 1]
 
         input_v = (input_v - 0.5) * 2
@@ -73,10 +76,11 @@ class NetFlow(object):
             self.summ = tf.merge_all_summaries()
             init_op = tf.initialize_all_variables()
 
-        sess.run(init_op)
+        sess.run(init_op, feed_dict = {self.data_ph.get_train_test(): True})
 
         if self.model_params["restore_model"]:
-            sf.restore_model(sess, self.saver, self.model_params["model_dir"])
+            sf.restore_model(sess, self.saver, self.model_params["model_dir"],
+                        self.model_params["restore_model_name"])
         
     def mainloop(self):
         sess = tf.Session()

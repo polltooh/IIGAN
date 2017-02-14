@@ -9,7 +9,7 @@ class Model(ModelAbs):
         self.model_mini(model_params)
    
     def conv2_wapper(self, input_tensor, output_dim, wd, layer_name, \
-                    add_relu, leaky_param):
+                    add_relu, leaky_param, add_batch_norm, train_test_ph):
         kernel_shape = [4, 4, input_tensor.get_shape().as_list()[3], output_dim]
 
         conv = mf.convolution_2d_layer(input_tensor, kernel_shape, [2,2], 
@@ -17,10 +17,13 @@ class Model(ModelAbs):
         if add_relu:
             conv = mf.add_leaky_relu(conv, leaky_param)
 
+        if add_batch_norm: 
+            conv = mf.batch_norm_layer(conv, train_test_ph) 
+
         return conv
 
     def deconv2_wapper(self, input_tensor, output, wd, layer_name, 
-                    add_relu, leaky_param, concat):
+                    add_relu, leaky_param, concat, add_batch_norm, train_test_ph):
         """output could be the tensor or the shape list"""
         if type(output) is not list:
             output_shape = output.get_shape().as_list()
@@ -51,42 +54,54 @@ class Model(ModelAbs):
         image = data_ph.get_input()
         keep_prob = data_ph.get_keep_prob()
         output_c_dim = data_ph.get_label().get_shape().as_list()[3]
+        train_test_ph = data_ph.get_train_test()
 
         gf_dim = 64 # the number of channel of the first layer
         with tf.variable_scope("G"):
             # encode network
-            e1 = self.conv2_wapper(image, gf_dim, wd, "e1", True, leaky_param)
+            e1 = self.conv2_wapper(image, gf_dim, wd, "e1", True, leaky_param, 
+                        True, train_test_ph)
             print(e1)
-            e2 = self.conv2_wapper(e1, gf_dim * 2, wd, "e2", True, leaky_param)
+            e2 = self.conv2_wapper(e1, gf_dim * 2, wd, "e2", True, leaky_param,
+                        True, train_test_ph)
             print(e2)
-            e3 = self.conv2_wapper(e2, gf_dim * 4, wd, "e3", True, leaky_param)
+            e3 = self.conv2_wapper(e2, gf_dim * 4, wd, "e3", True, leaky_param,
+                        True, train_test_ph)
             print(e3)
-            e4 = self.conv2_wapper(e3, gf_dim * 8, wd, "e4", True, leaky_param)
+            e4 = self.conv2_wapper(e3, gf_dim * 8, wd, "e4", True, leaky_param,
+                        True, train_test_ph)
             print(e4)
-            e5 = self.conv2_wapper(e4, gf_dim * 8, wd, "e5", True, leaky_param)
+            e5 = self.conv2_wapper(e4, gf_dim * 8, wd, "e5", True, leaky_param,
+                        True, train_test_ph)
             print(e5)
-            e6 = self.conv2_wapper(e5, gf_dim * 8, wd, "e6", True, leaky_param)
+            e6 = self.conv2_wapper(e5, gf_dim * 8, wd, "e6", True, leaky_param,
+                        True, train_test_ph)
             print(e6)
             
             # decode network
-            d1 = self.deconv2_wapper(e6, e5, wd, "d1", True, leaky_param, True)
+            d1 = self.deconv2_wapper(e6, e5, wd, "d1", True, leaky_param, True,
+                        True, train_test_ph)
             d1 = self.keep_prob_wapper(d1, keep_prob)
             print(d1)
-            d2 = self.deconv2_wapper(d1, e4, wd, "d2", True, leaky_param, True)
-            d2 = self.keep_prob_wapper(d2, keep_prob)
-            print(d2)
-            d3 = self.deconv2_wapper(d2, e3, wd, "d3", True, leaky_param, True)
-            d3 = self.keep_prob_wapper(d3, keep_prob)
-            print(d3)
-            d4 = self.deconv2_wapper(d3, e2, wd, "d4", True, leaky_param, True)
-            print(d4)
-            d5 = self.deconv2_wapper(d4, e1, wd, "d5", True, leaky_param, True)
+            d2 = self.deconv2_wapper(d1, e4, wd, "d2", True, leaky_param, True,
+                        True, train_test_ph)
+            d2 = self.keep_prob_wapper(d2, keep_prob)                         
+            print(d2)                                                         
+            d3 = self.deconv2_wapper(d2, e3, wd, "d3", True, leaky_param, True,
+                        True, train_test_ph)
+            d3 = self.keep_prob_wapper(d3, keep_prob)                         
+            print(d3)                                                         
+            d4 = self.deconv2_wapper(d3, e2, wd, "d4", True, leaky_param, True,
+                        True, train_test_ph)
+            print(d4)                                                         
+            d5 = self.deconv2_wapper(d4, e1, wd, "d5", True, leaky_param, True,
+                        True, train_test_ph)
             print(d5)
 
             output_shape = image.get_shape().as_list()
             output_shape[3] = output_c_dim
             d6 = self.deconv2_wapper(d5, output_shape, wd, "d6", 
-                            False, leaky_param, False)
+                            False, leaky_param, False, False, train_test_ph)
 
             g_image = tf.tanh(d6, d6.op.name + "_tanh")
             print(g_image)
@@ -100,17 +115,22 @@ class Model(ModelAbs):
             real_concat = tf.concat(3, [data_ph.get_label(), data_ph.get_input()])
             fake_real_concat = tf.concat(0, [fake_concat, real_concat])
             c1 = self.conv2_wapper(fake_real_concat, df_dim, wd, "c1", 
-                                    True, leaky_param)
+                                    True, leaky_param, False, None)
             print(c1)
-            c2 = self.conv2_wapper(c1, df_dim * 2, wd, "c2", True, leaky_param)
+            c2 = self.conv2_wapper(c1, df_dim * 2, wd, "c2", True, leaky_param,
+                                False, None)
             print(c2)
-            c3 = self.conv2_wapper(c2, df_dim * 4, wd, "c3", True, leaky_param)
+            c3 = self.conv2_wapper(c2, df_dim * 4, wd, "c3", True, leaky_param,
+                                False, None)
             print(c3)
-            c4 = self.conv2_wapper(c3, df_dim * 8, wd, "c4", True, leaky_param)
+            c4 = self.conv2_wapper(c3, df_dim * 8, wd, "c4", True, leaky_param,
+                                False, None)
             print(c4)
-            c5 = self.conv2_wapper(c4, df_dim * 8, wd, "c5", True, leaky_param)
+            c5 = self.conv2_wapper(c4, df_dim * 8, wd, "c5", True, leaky_param,
+                                False, None)
             print(c5)
-            c6 = self.conv2_wapper(c5, df_dim * 8, wd, "c6", True, leaky_param)
+            c6 = self.conv2_wapper(c5, df_dim * 8, wd, "c6", True, leaky_param,
+                                False, None)
             print(c6)
             fc = mf.fully_connected_layer(c6, 1, wd, "fc")
             print(fc)

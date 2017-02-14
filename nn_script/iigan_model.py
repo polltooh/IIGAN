@@ -42,6 +42,9 @@ class Model(ModelAbs):
             deconv = tf.concat(3, [deconv, output], 
                         deconv.op.name + "_concat")
 
+        if add_batch_norm: 
+            deconv = mf.batch_norm_layer(deconv, train_test_ph) 
+
         return deconv
 
     def keep_prob_wapper(self, input_tensor, keep_prob):

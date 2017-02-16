@@ -11,9 +11,12 @@ if __name__ == "__main__":
 
     file_list_dir = "../file_list/"
     data_ext = "_resize.jpg"
-    label_ext = "_resize.desmap"
+    #label_ext = "_resize.desmap"
+    label_ext = "_resize.segmap"
 
     cam_dir_list = file_io.get_dir_list(data_dir)
+
+    #cam_dir_list = ["/media/dog/data/WebCamT_60000/253"]
     train_list = list()
     test_list = list()
     full_file_list = list()
@@ -28,7 +31,7 @@ if __name__ == "__main__":
             data_list += curr_data_list
 
 
-        full_file_list += [d.replace(data_ext, label_ext) + " " + d \
+        full_file_list += [d + " " + d.replace(data_ext, label_ext) \
                         for d in data_list]
 
         #partition = 0.7
@@ -40,11 +43,14 @@ if __name__ == "__main__":
 
         #train_list += [d + " " + d.replace(data_ext, label_ext) for d in train_data]
         #test_list += [d + " " + d.replace(data_ext, label_ext) for d in test_data]
-
     train_file_list_name = 'train_list1.txt'
-    file_io.save_file(full_file_list, file_list_dir + train_file_list_name, True)
+    train_len = int(len(full_file_list) * 0.7)
+    train_file_list = full_file_list[:train_len]
+
+    file_io.save_file(train_file_list, file_list_dir + train_file_list_name, True)
 
     test_file_list_name = 'test_list1.txt'
-    file_io.save_file(full_file_list, file_list_dir + test_file_list_name, True)
+    test_file_list = full_file_list[train_len:]
+    file_io.save_file(test_file_list, file_list_dir + test_file_list_name, True)
 
 

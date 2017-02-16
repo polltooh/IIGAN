@@ -104,11 +104,11 @@ class NetFlow(object):
                     feed_dict = self.get_feed_dict(sess, is_train = False)
                     test_d_loss_v, test_g_loss_v , summ_v = sess.run([self.d_loss, 
                                       self.g_loss, self.summ], feed_dict)
-                    print(("i: %d train d_loss: %.8f g_loss: %.8f " + 
-                            "test d_loss: %.8f g_loss: %.8f")%(i, \
+                    print(("i: %d train d_loss: %.4f g_loss: %.4f " + 
+                            "test d_loss: %.4f g_loss: %.4f")%(i, \
                         d_loss_v, g_loss_v, test_d_loss_v, test_g_loss_v))
 
-                self.sum_writer.add_summary(summ_v, i)
+                    self.sum_writer.add_summary(summ_v, i)
 
                 if i != 0 and (i % self.model_params["save_per_iter"] == 0 or \
                                 i == self.model_params["max_training_iter"] - 1):

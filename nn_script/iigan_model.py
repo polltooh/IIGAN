@@ -153,7 +153,7 @@ class Model(ModelAbs):
         fc = self.discriminator(g_image, data_ph, wd, leaky_param)
         self.fc = fc
 
-    def model_loss_org(self, data_ph, model_params):
+    def model_loss(self, data_ph, model_params):
         wd_loss = tf.add_n(tf.get_collection("losses"), name = 'wd_loss')
         batch_size = data_ph.get_input().get_shape().as_list()[0]
 
@@ -186,7 +186,7 @@ class Model(ModelAbs):
         # cross entropy without log and without sigmoid function
         return (1 - 2 * label) * infer
 
-    def model_loss(self, data_ph, model_params):
+    def model_loss_wgan(self, data_ph, model_params):
         # refer to Wasserstein GAN training percedure
         wd_loss = tf.add_n(tf.get_collection("losses"), name = 'wd_loss')
         batch_size = data_ph.get_input().get_shape().as_list()[0]
@@ -220,6 +220,21 @@ class Model(ModelAbs):
         tf.add_to_collection("losses", self.g_w_loss)
 
     def model_mini(self, model_params):
+        d_vars = [v for v in tf.trainable_variables() if "D" in v.op.name]
+        g_vars = [v for v in tf.trainable_variables() if "G" in v.op.name]
+
+        self.d_optim = tf.train.AdamOptimizer(
+                            model_params["init_learning_rate"]).minimize(
+                            self.d_w_loss, var_list = d_vars)
+
+        self.g_optim = tf.train.AdamOptimizer(
+                            model_params["init_learning_rate"]).minimize(
+                            self.g_w_loss, var_list = g_vars)
+
+        # no use at the moment. Just for consistancy 
+        self.clip_d = tf.constant(1)
+
+    def model_mini_wgan(self, model_params):
         d_vars = [v for v in tf.trainable_variables() if "D" in v.op.name]
         g_vars = [v for v in tf.trainable_variables() if "G" in v.op.name]
 

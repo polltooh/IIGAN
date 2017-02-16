@@ -42,9 +42,9 @@ class NetFlow(object):
         #normalize to [-1, 1]
 
         input_v = (input_v - 0.5) * 2
-        label_v = (label_v * 100 - 0.5) * 2
-        feed_dict[self.data_ph.get_input()] = input_v
-        feed_dict[self.data_ph.get_label()] = label_v
+        label_v = (label_v - 0.5) * 2
+        feed_dict[self.data_ph.get_input()] = label_v
+        feed_dict[self.data_ph.get_label()] = input_v
         feed_dict[self.data_ph.get_keep_prob()] = 0.5
 
         return feed_dict
@@ -62,7 +62,7 @@ class NetFlow(object):
     def init_var(self, sess):
         sf.add_train_var()
         sf.add_loss()
-        sf.add_image("image_to_write")
+        sf.add_image("image_to_write", 8)
         self.saver = tf.train.Saver()
 
         if TF_VERSION > '11':

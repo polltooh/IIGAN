@@ -8,7 +8,7 @@ class DataPh(DataPhAbs):
             model_params["batch_size"],
             model_params["feature_ph_row"],
             model_params["feature_ph_col"],
-            model_params["feature_cha"]],
+            model_params["feature_ph_cha"]],
                                        name="feature"
                                        )
 
@@ -16,7 +16,7 @@ class DataPh(DataPhAbs):
             model_params["batch_size"],
             model_params["label_ph_row"],
             model_params["label_ph_col"],
-            model_params["label_cha"]],
+            model_params["label_ph_cha"]],
                                        name="label"
                                        )
 

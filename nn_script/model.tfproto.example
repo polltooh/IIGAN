@@ -47,5 +47,5 @@ data_arg.feature.rcrop_size: [224, 224]
 data_arg.label.rflip_leftright: True
 data_arg.label.rcrop_size: [224, 224]
 
-
-
+# define the fraction of gpu
+gpu_fraction: 0.2

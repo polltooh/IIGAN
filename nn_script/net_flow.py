@@ -88,7 +88,8 @@ class NetFlow(object):
                         self.model_params["restore_model_name"])
         
     def mainloop(self):
-        sess = tf.Session()
+        config_proto = uf.define_graph_config(model_params["gpu_fraction"])
+        sess = tf.Session(config = config_proto)
         self.init_var(sess)
 
         coord = tf.train.Coordinator()

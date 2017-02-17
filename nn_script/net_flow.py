@@ -4,6 +4,7 @@ from iigan_model import Model
 #from vgg_atrous_model import Model
 import tensorflow as tf
 from TensorflowToolbox.model_flow import save_func as sf
+from TensorflowToolbox.utility import file_io
 import cv2
 
 TF_VERSION = tf.__version__.split(".")[1]
@@ -19,7 +20,11 @@ class NetFlow(object):
             self.test_data_input = DataInput(model_params, is_train = False)
 
         self.data_ph = DataPh(model_params)
-        self.model = Model(self.data_ph, model_params)
+        model = file_io.import_module_class(model_params["model_def_name"],
+                                            "Model")
+
+        self.model = model(self.data_ph, model_params)
+       
         self.d_loss, self.g_loss = self.model.get_loss()
         self.d_train_op, self.g_train_op = self.model.get_train_op()
         self.d_clip = self.model.get_clip()

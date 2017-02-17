@@ -33,6 +33,8 @@ weight_decay:0.000004
 
 train_file_name:../file_list/train_list1.txt
 test_file_name:../file_list/test_list1.txt
+model_def_name:iigan_model2
+
 test_per_iter: 200
 save_per_iter: 500
 

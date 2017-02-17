@@ -5,6 +5,7 @@ from iigan_model import Model
 import tensorflow as tf
 from TensorflowToolbox.model_flow import save_func as sf
 from TensorflowToolbox.utility import file_io
+from TensorflowToolbox.utility import utility_func as uf 
 import cv2
 
 TF_VERSION = tf.__version__.split(".")[1]
@@ -88,7 +89,7 @@ class NetFlow(object):
                         self.model_params["restore_model_name"])
         
     def mainloop(self):
-        config_proto = uf.define_graph_config(model_params["gpu_fraction"])
+        config_proto = uf.define_graph_config(self.model_params["gpu_fraction"])
         sess = tf.Session(config = config_proto)
         self.init_var(sess)
 

@@ -1,4 +1,2 @@
 # IIGAN
-The code for image to image 
-
-
+Tensorflow implementation for image to image translation with GAN.

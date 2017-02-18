@@ -171,9 +171,15 @@ class Model(ModelAbs):
         wd = model_params["weight_decay"]
 
         g_image = self.generator(data_ph, wd, leaky_param)
-        tf.add_to_collection("image_to_write", g_image)
-        tf.add_to_collection("image_to_write", data_ph.get_input())
-        tf.add_to_collection("image_to_write", data_ph.get_label())
+
+        image_sum = tf.concat(1, [g_image, data_ph.get_input(),
+                            data-ph.get_label()])
+
+        tf.add_to_collection("image_to_write", image_sum)
+
+        #tf.add_to_collection("image_to_write", g_image)
+        #tf.add_to_collection("image_to_write", data_ph.get_input())
+        #tf.add_to_collection("image_to_write", data_ph.get_label())
         
         self.g_image = g_image
         fc_pair = self.discriminator_pair(g_image, data_ph, wd, leaky_param)

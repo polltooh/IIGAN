@@ -173,7 +173,7 @@ class Model(ModelAbs):
         g_image = self.generator(data_ph, wd, leaky_param)
 
         image_sum = tf.concat(1, [g_image, data_ph.get_input(),
-                            data-ph.get_label()])
+                            data_ph.get_label()])
 
         tf.add_to_collection("image_to_write", image_sum)
 

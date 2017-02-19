@@ -49,8 +49,8 @@ class NetFlow(object):
 
         input_v = (input_v - 0.5) * 2
         label_v = (label_v - 0.5) * 2
-        feed_dict[self.data_ph.get_input()] = input_v
-        feed_dict[self.data_ph.get_label()] = label_v
+        feed_dict[self.data_ph.get_input()] = label_v
+        feed_dict[self.data_ph.get_label()] = input_v
         feed_dict[self.data_ph.get_keep_prob()] = 0.5
 
         return feed_dict

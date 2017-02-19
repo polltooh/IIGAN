@@ -1,6 +1,8 @@
 from TensorflowToolbox.model_flow.model_abs import ModelAbs
 from TensorflowToolbox.model_flow import model_func as mf
+from TensorflowToolbox.utility import image_utility_func as iuf
 import tensorflow as tf
+
 
 class Model(ModelAbs):
     def __init__(self, data_ph, model_params):
@@ -172,8 +174,9 @@ class Model(ModelAbs):
 
         g_image = self.generator(data_ph, wd, leaky_param)
 
-        image_sum = tf.concat(1, [g_image, data_ph.get_input(),
-                            data-ph.get_label()])
+        with tf.variable_scope("image_sum"):
+            image_sum = iuf.merge_image(1, [g_image, data_ph.get_input(),
+                                    data_ph.get_label()])
 
         tf.add_to_collection("image_to_write", image_sum)
 
@@ -189,52 +192,53 @@ class Model(ModelAbs):
         self.fc_real = fc_real
 
     def model_loss(self, data_ph, model_params):
-        wd_loss = tf.add_n(tf.get_collection("losses"), name = 'wd_loss')
-        batch_size = data_ph.get_input().get_shape().as_list()[0]
+        with tf.variable_scope("loss"):
+            wd_loss = tf.add_n(tf.get_collection("losses"), name = 'wd_loss')
+            batch_size = data_ph.get_input().get_shape().as_list()[0]
 
-        real_label = tf.constant(1, dtype = tf.float32, shape = (batch_size, 1))
-        fake_label = tf.constant(0, dtype = tf.float32, shape = (batch_size, 1))
-        fake_real_label = tf.concat(0, [fake_label, real_label])
+            real_label = tf.constant(1, dtype = tf.float32, shape = (batch_size, 1))
+            fake_label = tf.constant(0, dtype = tf.float32, shape = (batch_size, 1))
+            fake_real_label = tf.concat(0, [fake_label, real_label])
 
-        # d pair loss
-        self.d_pair_loss = tf.reduce_mean(
-                     tf.nn.sigmoid_cross_entropy_with_logits(self.fc_pair, 
-                     fake_real_label), name = "d_pair_xentropy_loss")
-        tf.add_to_collection("losses", self.d_pair_loss)
-
-
-        # d real loss
-        self.d_real_loss = tf.reduce_mean(
-                     tf.nn.sigmoid_cross_entropy_with_logits(self.fc_real, 
-                     fake_real_label), name = "d_real_xentropy_loss")
-        tf.add_to_collection("losses", self.d_real_loss)
+            # d pair loss
+            self.d_pair_loss = tf.reduce_mean(
+                         tf.nn.sigmoid_cross_entropy_with_logits(self.fc_pair, 
+                         fake_real_label), name = "d_pair_xentropy_loss")
+            tf.add_to_collection("losses", self.d_pair_loss)
 
 
-        self.d_w_loss = tf.add_n([self.d_pair_loss, self.d_real_loss, 
-                        wd_loss], name = "g_loss")
+            # d real loss
+            self.d_real_loss = tf.reduce_mean(
+                         tf.nn.sigmoid_cross_entropy_with_logits(self.fc_real, 
+                         fake_real_label), name = "d_real_xentropy_loss")
+            tf.add_to_collection("losses", self.d_real_loss)
 
-        #
-        real_fake_label = tf.concat(0, [real_label, fake_label])
-        g_pair_total_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-                                                    self.fc_pair, 
-                                                    real_fake_label)
 
-        self.g_pair_loss = tf.reduce_mean(g_pair_total_loss[:batch_size,:], 
-                        name = "g_pair_xentropy_loss")
-        tf.add_to_collection("losses", self.g_pair_loss)
-        
-        #
-        g_real_total_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-                                                    self.fc_real, 
-                                                    real_fake_label)
+            self.d_w_loss = tf.add_n([self.d_pair_loss, self.d_real_loss, 
+                            wd_loss], name = "g_loss")
 
-        self.g_real_loss = tf.reduce_mean(g_real_total_loss[:batch_size,:], 
-                        name = "g_real_xentropy_loss")
-        tf.add_to_collection("losses", self.g_real_loss)
+            #
+            real_fake_label = tf.concat(0, [real_label, fake_label])
+            g_pair_total_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+                                                        self.fc_pair, 
+                                                        real_fake_label)
 
-        self.g_w_loss = tf.add_n([self.g_pair_loss, self.g_real_loss, 
-                        wd_loss], name = "g_loss")
-        tf.add_to_collection("losses", self.g_w_loss)
+            self.g_pair_loss = tf.reduce_mean(g_pair_total_loss[:batch_size,:], 
+                            name = "g_pair_xentropy_loss")
+            tf.add_to_collection("losses", self.g_pair_loss)
+            
+            #
+            g_real_total_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+                                                        self.fc_real, 
+                                                        real_fake_label)
+
+            self.g_real_loss = tf.reduce_mean(g_real_total_loss[:batch_size,:], 
+                            name = "g_real_xentropy_loss")
+            tf.add_to_collection("losses", self.g_real_loss)
+
+            self.g_w_loss = tf.add_n([self.g_pair_loss, self.g_real_loss, 
+                            wd_loss], name = "g_loss")
+            tf.add_to_collection("losses", self.g_w_loss)
     
     def loss_wapper(self, infer, label):
         # cross entropy without log and without sigmoid function
@@ -274,20 +278,21 @@ class Model(ModelAbs):
         tf.add_to_collection("losses", self.g_w_loss)
 
     def model_mini(self, model_params):
-        d_vars = [v for v in tf.trainable_variables() if "D" in v.op.name]
+        with tf.variable_scope("optimization"):
+            d_vars = [v for v in tf.trainable_variables() if "D" in v.op.name]
 
-        g_vars = [v for v in tf.trainable_variables() if "G" in v.op.name]
+            g_vars = [v for v in tf.trainable_variables() if "G" in v.op.name]
 
-        self.d_optim = tf.train.AdamOptimizer(
-                            model_params["init_learning_rate"]).minimize(
-                            self.d_w_loss, var_list = d_vars)
+            self.d_optim = tf.train.AdamOptimizer(
+                                model_params["init_learning_rate"]).minimize(
+                                self.d_w_loss, var_list = d_vars)
 
-        self.g_optim = tf.train.AdamOptimizer(
-                            model_params["init_learning_rate"]).minimize(
-                            self.g_w_loss, var_list = g_vars)
+            self.g_optim = tf.train.AdamOptimizer(
+                                model_params["init_learning_rate"]).minimize(
+                                self.g_w_loss, var_list = g_vars)
 
-        # no use at the moment. Just for consistancy 
-        self.clip_d = tf.constant(1)
+            # no use at the moment. Just for consistancy 
+            self.clip_d = tf.constant(1)
 
     def model_mini_wgan(self, model_params):
         d_vars = [v for v in tf.trainable_variables() if "D" in v.op.name]

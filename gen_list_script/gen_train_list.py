@@ -7,7 +7,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         data_dir = sys.argv[1]
     else:
-        data_dir = "../data"
+        data_dir = "../../data"
 
     file_list_dir = "../file_list/"
     data_ext = "_resize.jpg"

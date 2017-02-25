@@ -4,15 +4,16 @@ from TensorflowToolbox.utility import file_io
 import sys
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        data_dir = sys.argv[1]
-    else:
-        data_dir = "../../data"
+    if not len(sys.argv) == 3:
+        print("Usage: gen_train_list.py data_dir size_len")
+        exit(1)
+    data_dir = sys.argv[1]
+    size_len = int(sys.argv[2])
+    dsize = (size_len, size_len)
 
     file_list_dir = "../file_list/"
-    data_ext = "_resize.jpg"
-    #label_ext = "_resize.desmap"
-    label_ext = "_resize.segmap"
+    data_ext = "_%d.jpg"%size_len
+    label_ext = "_%d.segmap"%size_len
 
     cam_dir_list = file_io.get_dir_list(data_dir)
 
